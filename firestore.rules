@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{roomId} {
+      function signedIn() { return request.auth != null; }
+      allow create: if signedIn()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.status == 'waiting';
+      allow read: if signedIn();
+      // Prototype only: participants can alter scores. Do not use for prize competitions.
+      allow update: if signedIn()
+        && request.resource.data.owner == resource.data.owner
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.keys().hasOnly(['owner','status','createdAt','players','scores'])
+        && (request.resource.data.status == resource.data.status
+            || (request.auth.uid == resource.data.owner
+                && resource.data.status == 'waiting'
+                && request.resource.data.status == 'playing'));
+      allow delete: if false;
+    }
+  }
+}
